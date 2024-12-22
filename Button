@@ -1,0 +1,164 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using NAudio.CoreAudioApi;
+using NAudio.Wave;
+using System.IO;
+using System.Reflection;
+
+namespace WpfApp3
+{
+    /// <summary>
+    /// Логика взаимодействия для MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : Window
+    {
+
+        private MediaPlayer mediaPlayer;
+        public MainWindow()
+        {
+            InitializeComponent();
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            var cancelEventArgs = new System.ComponentModel.CancelEventArgs();
+
+            MainWindow_Closing(this, cancelEventArgs);
+
+            SetVolumeToMax();
+
+            PlayMusic();
+
+            ImageF();
+
+            this.Closing += MainWindow_Closing;
+            Button.IsEnabled = false;
+        }
+
+        private void SetVolumeToMax()
+        {
+            var deviceEnumerator = new MMDeviceEnumerator();
+            var device = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            device.AudioEndpointVolume.MasterVolumeLevelScalar = 1.0f;
+        }
+
+        private void PlayMusic()
+        {
+            if (mediaPlayer == null) 
+            {
+                mediaPlayer = new MediaPlayer();
+            }
+
+            string resourceName = "WpfApp3.music.stricken.mp3";
+
+            using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName))
+            {
+                if (stream == null)
+                {
+                    Console.WriteLine("Ресурс не найден.");
+                    return;
+                }
+
+                string tempFilePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "tempMusic.mp3");
+                using (FileStream fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
+                {
+                    stream.CopyTo(fileStream);
+                }
+
+                mediaPlayer.Open(new Uri(tempFilePath));
+                mediaPlayer.Play();
+            }
+        }
+
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!Button.IsEnabled)
+            { 
+                e.Cancel = true;
+            }
+
+        }
+
+        private void ImageF()
+        {
+            ImageItemsControl.Items.Clear();
+
+            // Массив полных путей к изображениям
+            string[] imageFiles = new string[]
+            {
+        "WpfApp3.image.гойда1.png",
+        "WpfApp3.image.гойда2.jpg",
+        "WpfApp3.image.джоджо1.jpg",
+        "WpfApp3.image.джоджо2.webp",
+        "WpfApp3.image.ааа.webp",
+        "WpfApp3.image.жесть.webp"
+            };
+
+            // Вывод всех доступных ресурсов для диагностики
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceNames = assembly.GetManifestResourceNames();
+
+            Console.WriteLine("Доступные ресурсы:");
+            foreach (var name in resourceNames)
+            {
+                Console.WriteLine(name);
+            }
+
+            Random random = new Random();
+            // Перемешиваем массив изображений
+            imageFiles = imageFiles.OrderBy(x => random.Next()).ToArray();
+
+            foreach (var resourceName in imageFiles)
+            {
+                using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+                {
+                    if (stream == null)
+                    {
+                        Console.WriteLine($"Ресурс не найден: {resourceName}");
+                        continue; // Переходим к следующему ресурсу
+                    }
+
+                    try
+                    {
+                        var image = new System.Windows.Controls.Image();
+                        var bitmapImage = new BitmapImage();
+
+                        // Загружаем поток в BitmapImage
+                        bitmapImage.BeginInit();
+                        bitmapImage.StreamSource = stream;
+                        bitmapImage.CacheOption = BitmapCacheOption.OnLoad; // Загружаем изображение в память
+                        bitmapImage.EndInit();
+                        bitmapImage.Freeze(); // Замораживаем изображение для использования в UI
+
+                        image.Source = bitmapImage;
+                        image.Width = 220;
+                        image.Height = 170;
+                        image.Margin = new Thickness(5);
+
+                        ImageItemsControl.Items.Add(image);
+                        Console.WriteLine($"Изображение добавлено: {resourceName}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Ошибка при загрузке изображения: {ex.Message}");
+                    }
+                }
+            }
+
+            ImageItemsControl.UpdateLayout(); // Обновить интерфейс
+        }
+
+    }
+}
